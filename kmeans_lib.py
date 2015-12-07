@@ -37,7 +37,7 @@ def k_means_reduced(all_projected_matrix, distance, d, n, k, weighted_distance):
 
         # Update assignments
         allocation_table = update_allocation(results, allocation_table)  # change prev alloc table based on curr results
-        # print(allocation_table)
+        print(allocation_table)
         results = ClassFile.Results()  # reset results
         all_projected_clusters = create_projected_cluster(all_projected_matrix, allocation_table)
 

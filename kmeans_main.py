@@ -14,7 +14,7 @@ import data_getter as dg
 __author__ = 'MagnieAr'
 
 
-def get_clusters(distance, target, fitting, observations, normalize_return, plot_pca,
+def get_clusters(distance, target, fitting, observations, normalize_return, n, plot_pca,
                  plot_projected_mat, plot_clusters, plot_fitting, file_path, workbook_name, weighted_distance):
 
     book = open_workbook(os.path.join(file_path, workbook_name), on_demand=True)
@@ -92,21 +92,21 @@ def get_clusters(distance, target, fitting, observations, normalize_return, plot
         Computation of the distance and update of the allocation table - main algorithm
     """
 
-    N = 20  # Number of iterations
+
     K = 4
     component_number = 2
 
     if distance == "correlation":
-        allocation_table = km.k_means_whole_data(samples, sheets_nbr, N, K)  # TODO
+        allocation_table = km.k_means_whole_data(samples, sheets_nbr, n, K)  # TODO
         costs = 0
     else:
         if target == "series":
             allocation_table, all_projected_clusters = km.k_means_reduced(all_projected_matrix, distance,
-                                                                          sheets_nbr, N, K, weighted_distance)
+                                                                          sheets_nbr, n, K, weighted_distance)
             costs = km.cost_of_clustering(all_projected_clusters, all_projected_matrix, allocation_table, weighted_distance)
         elif target == "components":
             allocation_table, all_pc_clusters = km.k_means_pc(all_eigen_vectors, all_projected_matrix, distance,
-                                                              sheets_nbr, N, K, weighted_distance)
+                                                              sheets_nbr, n, K, weighted_distance)
             costs = 0
 
         if plot_clusters:

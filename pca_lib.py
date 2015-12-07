@@ -14,10 +14,28 @@ def pca(returns_matrix, sheet_name, sht_idx, num_rows, plot_pca, plot_projected_
     eig_values = pca_out.explained_variance_
     eig_vectors = pca_out.components_
 
-    diag_mat = np.diag(np.sqrt(eig_values))
-    vol_matrix = eig_vectors.dot(diag_mat)
-
     projected_sample = ClassFile.ProjectedSeries(sheet_name)
+
+    """ Test purpose
+
+    diag_mat = np.diag(np.sqrt(eig_values))
+    vol_matrix = eig_vectors.T.dot(diag_mat)
+
+    cov_mat = np.cov(returns_matrix.T)
+    cov_mat_ret = np.cov([returns_matrix[:, i] for i in range(0, 10)])
+
+    vol = [sum(vol_matrix[i]) for i in range(0, 10)]
+    vol_2 = [np.sqrt(cov_mat[j][j]) for j in range(0, 10)]
+
+    s_v = sum(vol)
+    s_v2 = sum(vol_2)
+
+    d = np.diag(np.sqrt(eig_values[0:3]))
+    v = eig_vectors[0:3].T.dot(d)
+
+    retrieved_cov = eig_vectors.T.dot(np.diag(eig_values).dot(eig_vectors))
+
+    """
 
     sum_pair = 0
     for i in eig_values:
