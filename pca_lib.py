@@ -5,16 +5,19 @@ from sklearn.decomposition import PCA
 import ClassFile
 
 
-def pca(covariance_matrix, sheet_name, sht_idx, num_rows, plot_pca):
+def pca(returns_matrix, sheet_name, sht_idx, num_rows, plot_pca, plot_projected_mat):
 
     pca_out = PCA(n_components=10)
-    pca_out.fit(covariance_matrix)
-    pca_out.transform(covariance_matrix)
+    pca_out.fit(returns_matrix)
+    pca_out.transform(returns_matrix)
     PCA(copy=True, n_components=10, whiten=False)
     eig_values = pca_out.explained_variance_
     eig_vectors = pca_out.components_
 
-    projected_sample = ClassFile.ProjectedSeries()
+    diag_mat = np.diag(np.sqrt(eig_values))
+    vol_matrix = eig_vectors.dot(diag_mat)
+
+    projected_sample = ClassFile.ProjectedSeries(sheet_name)
 
     sum_pair = 0
     for i in eig_values:
@@ -27,15 +30,22 @@ def pca(covariance_matrix, sheet_name, sht_idx, num_rows, plot_pca):
         contribution[z] = i / sum_pair
         z += 1
 
-    for j in range(0,3):
+    for j in range(0, 3):
         component = ClassFile.Component(contribution[j])
         projected_sample.add_components(component)
 
     if plot_pca:
         plot_pc(eig_vectors, sheet_name, sht_idx, num_rows, True)
 
+    # Project the returns in the PCA space
+    projected_matrix = eig_vectors.dot(returns_matrix.T)
+
+    # Plot the projected matrix on request
+    if plot_projected_mat:
+        plot_matrix(sht_idx+1, sheet_name, projected_matrix, returns_matrix)
+
     # Return only the first three Eigen-vectors
-    return eig_vectors[0:3], projected_sample, eig_values;
+    return eig_vectors[0:3], projected_sample, eig_values, projected_matrix;
 
 
 def plot_pc(eig_vectors, sheet_name, sht_idx, num_rows, default):

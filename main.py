@@ -1,0 +1,40 @@
+import kmeans_main as kmean
+import options_lib as opt
+
+distance = "euclidean"
+# distance = "correlation-pca"
+# distance = "correlation"
+# distance = "dwt"
+
+target = "series"
+# target = "components"
+
+#fitting = "eigen_vectors"
+fitting = "eigvect_eigval"
+
+weighted_distance = True
+
+observations = 220  # max 220
+normalize_return = True
+
+plot_pca = False
+plot_projected_mat = True
+plot_clusters = True
+plot_fitting = False
+
+file_path=r'P:\Projects\Master Thesis'
+workbook_name = "XHRC-datareduced.xlsm"
+
+allocation_table, clustering_cost, exec_time, fitted_coefficients, all_returns, all_projected_clusters = kmean.get_clusters(
+                                                                                distance, target, fitting,
+                                                                                observations, normalize_return,
+                                                                                plot_pca, plot_projected_mat,
+                                                                                plot_clusters, plot_fitting,
+                                                                                file_path, workbook_name,
+                                                                                weighted_distance)
+print("")
+print(allocation_table)
+print("")
+print(clustering_cost)
+
+opt.options_pricing(fitted_coefficients, all_returns)

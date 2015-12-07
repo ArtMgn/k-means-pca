@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.spatial as scp
+import scipy.stats as st
 from scipy.cluster.vq import whiten
 
 import ClassFile
@@ -155,19 +156,9 @@ def pearson_coeff(allocation_table, samples, clusters, sample_index, cluster_ind
     return coefficient;
 
 
-def euclidean_distance(samples, clusters, s, c):
-
-    # print(samples.samples[s-1].mean, clusters.clusters[c-1].mean)
-    diff = np.abs(float(samples.samples[s-1].mean) - float(clusters.clusters[c-1].mean))
-    eucl = np.sqrt(diff)
-
-    return eucl;
-
-
-def new_distance(all_projected_matrix, all_projected_clusters, s, c):
+def euclidean_distance(all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
 
     dist = 0
-    weight = 0
     for i in range(0, 3):
         weight = (all_projected_matrix[s-1].components[i].contribution +
                   all_projected_clusters[c-1].components[i].contribution)/2
@@ -175,23 +166,68 @@ def new_distance(all_projected_matrix, all_projected_clusters, s, c):
         eucl_dist = scp.distance.euclidean(all_projected_matrix[s-1].components[i].series[0],
                                            all_projected_clusters[c-1].components[i].series[0])
 
-        dist += eucl_dist * weight
-        # dist = dist + eucl_dist
+        if weighted_distance:
+            dist += eucl_dist * weight
+        else:
+            dist += eucl_dist
 
     return dist;
 
 
-def new_distance_dwt(all_projected_matrix, all_projected_clusters, s, c):
+def euclidean_distance_pc(all_eigen_vectors, all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
 
     dist = 0
-    weight = 0
     for i in range(0, 3):
         weight = (all_projected_matrix[s-1].components[i].contribution +
                   all_projected_clusters[c-1].components[i].contribution)/2
-        dwt_dist = dtw_distance(all_projected_matrix[s-1].components[i].series[0],
-                                all_projected_clusters[c-1].components[i].series[0], 24)
-        dist += dwt_dist * weight
-        # dist += dwt_dist
+
+        eucl_dist = scp.distance.euclidean(all_eigen_vectors[s-1][0][i],
+                                           all_projected_clusters[c-1].components[i].series[0])
+
+        if weighted_distance:
+            dist += eucl_dist * weight
+        else:
+            dist += eucl_dist
+
+    return dist;
+
+
+def correlation_distance(all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
+
+    dist = 0
+    for i in range(0, 3):
+        weight = (all_projected_matrix[s-1].components[i].contribution +
+                  all_projected_clusters[c-1].components[i].contribution)/2
+
+        # Get correlation coeff
+        pears_coeff = st.pearsonr(all_projected_matrix[s-1].components[i].series[0],
+                                           all_projected_clusters[c-1].components[i].series[0])
+        # Get the distance
+        corr_dist = d1(pears_coeff[0])
+
+        if weighted_distance:
+            dist += corr_dist * weight
+        else:
+             dist += corr_dist
+
+    return dist;
+
+
+def correlation_distance_pc(all_eigen_vectors, all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
+
+    dist = 0
+    for i in range(0, 3):
+        weight = (all_projected_matrix[s-1].components[i].contribution +
+                  all_projected_clusters[c-1].components[i].contribution)/2
+
+        pears_coeff = st.pearsonr(all_eigen_vectors[s-1][0][i],
+                                           all_projected_clusters[c-1].components[i].series[0])
+        corr_dist = d1(pears_coeff[0])
+
+        if weighted_distance:
+            dist += corr_dist * weight
+        else:
+             dist += corr_dist
 
     return dist;
 
@@ -201,12 +237,44 @@ def d1(p_coeff):
     return 2 * (1 - abs(p_coeff));
 
 
-def d2():
+def dwt_distance(all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
 
-    return 0;
+    dist = 0
+    weight = 0
+    for i in range(0, 3):
+        weight = (all_projected_matrix[s-1].components[i].contribution +
+                  all_projected_clusters[c-1].components[i].contribution)/2
+        dwt_dist = dtw_dist(all_projected_matrix[s-1].components[i].series[0],
+                            all_projected_clusters[c-1].components[i].series[0], 24)
+
+        if weighted_distance:
+            dist += dwt_dist * weight
+        else:
+            dist += dwt_dist
+
+    return dist;
 
 
-def dtw_distance(s1, s2, w):
+def dwt_distance_pc(all_eigen_vectors, all_projected_matrix, all_projected_clusters, s, c, weighted_distance):
+
+    dist = 0
+    weight = 0
+    for i in range(0, 3):
+        weight = (all_projected_matrix[s-1].components[i].contribution +
+                  all_projected_clusters[c-1].components[i].contribution)/2
+
+        dwt_dist = dtw_dist(all_eigen_vectors[s-1][0][i],
+                            all_projected_clusters[c-1].components[i].series[0], 24)
+
+        if weighted_distance:
+            dist += dwt_dist * weight
+        else:
+             dist += dwt_dist
+
+    return dist;
+
+
+def dtw_dist(s1, s2, w):
 
     dtw = {}
 

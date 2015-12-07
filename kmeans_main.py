@@ -2,7 +2,6 @@ import os
 import time
 
 import numpy as np
-import sklearn.preprocessing as pp
 from xlrd import open_workbook
 
 import ClassFile
@@ -10,139 +9,121 @@ import distances_lib as dist
 import function_fitting_lib as ff
 import kmeans_lib as km
 import pca_lib as pc
+import data_getter as dg
 
 __author__ = 'MagnieAr'
 
 
-file_path=r'P:\Projects\Master Thesis'
+def get_clusters(distance, target, fitting, observations, normalize_return, plot_pca,
+                 plot_projected_mat, plot_clusters, plot_fitting, file_path, workbook_name, weighted_distance):
 
-Book = open_workbook(os.path.join(file_path,"XHRC-datareduced.xlsm"), on_demand=True)
+    book = open_workbook(os.path.join(file_path, workbook_name), on_demand=True)
+    sheets_nbr = book.nsheets
 
-means_and_scatters = np.zeros((4, Book.nsheets))
-time_scatter = np.zeros((Book.nsheets, 10))
+    start = time.time()
 
-samples = ClassFile.Samples()
+    if distance == "correlation":
+        samples = ClassFile.Samples()
+    else:
+        all_projected_matrix = []
+        all_eigen_vectors = []
 
-big_matrix = np.zeros((220, 0))
-
-# Control parameters
-
-pca_mode = True
-plot_pca = True
-plot_projected_mat = True
-fit_mode = True
-plot_clusters = True
-
-start = time.time()
-all_projected_matrix = []
-"""
-    Computation of initial parameters, means and scatters of the data sample
-"""
-
-for sht_idx in range(0, Book.nsheets):
-    sheet_name = Book.sheet_by_index(sht_idx).name
-    sheet = Book.sheet_by_name(sheet_name)
-
-    # num_rows = sheet.nrows - 1
-    num_rows = 120
-    # num_rows = 220
-    num_cols = sheet.ncols - 1
-
-    all_maturities = [0 for x in range(num_rows)]
-
-    scatter_matrix = np.zeros((num_cols, num_rows))
-    scatter_returns = np.zeros((num_cols, num_rows-1))
-
-    for col_idx in range(1, num_cols+1):
-            for row_idx in range(1, num_rows+1):
-                    cell_obj = sheet.cell(row_idx, col_idx)
-                    all_maturities[row_idx-1] = cell_obj.value
-            scatter_matrix[col_idx-1] = all_maturities
-
-    X = pp.normalize(scatter_matrix, norm='l2', axis=0, copy=True)  # First, we need to gather all the data in one matrix in order to whiten the prices
-                                                                    #(improve k-means performance and remove correlation biased)
-
-    # scatter_matrix = X
-
-    for col_idx in range(0, num_cols):
-        for row_idx in range(0, num_rows):
-                val = scatter_matrix.T[row_idx][col_idx]
-                all_maturities[row_idx] = val
-                if row_idx > 0:
-                    scatter_returns[col_idx][row_idx-1] = (all_maturities[row_idx] - all_maturities[row_idx-1]) / all_maturities[row_idx-1]
-
-    R = scatter_returns.T
-    # whiten(R)
+    all_coefficients = []
+    all_returns = []
 
     """
-        Principal component decomposition before k-means
+        Computation of initial parameters, means and scatters of the data sample
     """
 
-    if pca_mode:
-        eig_vectors, ProjectedSample, eig_values = pc.pca(R, sheet_name, sht_idx, num_rows, plot_pca)
-        if fit_mode:
-            results = ff.function_fitting(1, eig_vectors, eig_values, sht_idx, sheet_name)
+    for sht_idx in range(0, sheets_nbr):
 
-        projected_matrix = eig_vectors.dot(R.T)
+        # Get the matrix of returns
+        R, sheet_name = dg.get_returns(sht_idx, normalize_return, observations)
+        all_returns.append(R)
 
+        if distance == "correlation":
+            """
+                Get the parameters used in correlation-based distance
+            """
+            mu_siT, omega, M = dist.data_mu(R)
+
+            scat, sample_temp = dist.scatter(R, omega, sheet_name)
+
+            sample = ClassFile.Sample(mu_siT, scat, omega, M, sheet_name)
+            sample.add_all_scatter_maturity(sample_temp.scatter_maturity)
+            samples.add_sample(sample)
+
+        """
+            Principal component decomposition before k-means
+        """
+
+        # Get the projected samples and the eigen vectors
+        eig_vectors, projected_sample, eig_values, projected_matrix = pc.pca(R, sheet_name, sht_idx,
+                                                                             observations, plot_pca, plot_projected_mat)
+
+        all_eigen_vectors.append((eig_vectors, eig_values))
+
+        # Store the first 3 projected component in  projected_sample
         for j in range(0,3):
-                ProjectedSample.components[j].add_series(projected_matrix[j, :])
+                projected_sample.components[j].add_series(projected_matrix[j, :])
 
-        all_projected_matrix.append(ProjectedSample)
+        # Store all the series projected in the PCA space into a bigger object
+        all_projected_matrix.append(projected_sample)
 
-        if plot_projected_mat:
-            pc.plot_matrix(sht_idx, sheet_name, projected_matrix, R)
+        # plt.show()
+        # pylab.savefig("PCA space " + sheet_name + ".png", bbox_inches='tight')
 
-    # plt.show()
-    # pylab.savefig("PCA space " + sheet_name + ".png", bbox_inches='tight')
+        """
+            Fitting of principal components
+        """
 
-    mu_siT, omega, M = dist.data_mu(R)
+        # Get the coefficients from the fitting of the curves
+        coefficients, v = ff.function_fitting(fitting, 1, eig_vectors, eig_values, sht_idx, sheet_name, plot_fitting)
+        all_coefficients.append(coefficients)
 
-    scat, sample_temp = dist.scatter(R, omega, sheet_name)
+    """
+        Computation of clusters' initial mean and scatter
+    """
 
-    sample = ClassFile.Sample(mu_siT, scat, omega, M, sheet_name)
-    sample.add_all_scatter_maturity(sample_temp.scatter_maturity)
-    samples.add_sample(sample)
+    #  clusters_mu = clust_mu(samples, allocation_table)
+    #  clusters = clust_scatter(samples, clusters_mu, allocation_table)
 
-"""
-    Computation of clusters' initial mean and scatter
-"""
+    """
+        Computation of the distance and update of the allocation table - main algorithm
+    """
 
-#  clusters_mu = clust_mu(samples, allocation_table)
-#  clusters = clust_scatter(samples, clusters_mu, allocation_table)
+    N = 20  # Number of iterations
+    K = 4
+    component_number = 2
 
+    if distance == "correlation":
+        allocation_table = km.k_means_whole_data(samples, sheets_nbr, N, K)  # TODO
+        costs = 0
+    else:
+        if target == "series":
+            allocation_table, all_projected_clusters = km.k_means_reduced(all_projected_matrix, distance,
+                                                                          sheets_nbr, N, K, weighted_distance)
+            costs = km.cost_of_clustering(all_projected_clusters, all_projected_matrix, allocation_table, weighted_distance)
+        elif target == "components":
+            allocation_table, all_pc_clusters = km.k_means_pc(all_eigen_vectors, all_projected_matrix, distance,
+                                                              sheets_nbr, N, K, weighted_distance)
+            costs = 0
 
-"""
-    Computation of the distance and update of the allocation table - main algorithm
-"""
+        if plot_clusters:
+            if target == "series":
+                km.display_final_clusters(all_projected_clusters, all_projected_matrix, allocation_table)
+            elif target == "components":
+                km.display_final_clusters_pc(all_eigen_vectors, all_pc_clusters,
+                                             allocation_table, component_number)
 
-N = 20  # Number of iterations
-K = 4
+    end = time.time()
 
-#  Results = ClassFile.Results()
-allocation_table, all_projected_clusters = km.k_means_alloc_table(all_projected_matrix, samples, Book.nsheets, N, K)
-#features = all_projected_matrix
-#whitened = whiten(features)
-#book = np.array((whitened[0],whitened[2]))
-#kmeans(whitened,book)
-#test = kmeans()
-print ""
-print "Code book"
-print(allocation_table)
+    if distance == "correlation":
+        ret = allocation_table, costs, end - start, all_coefficients, all_returns
+    else:
+        if target == "series":
+            ret = allocation_table, costs, end - start, all_coefficients, all_returns, all_projected_clusters
+        elif target == "components":
+            ret = allocation_table, costs, end - start, all_coefficients, all_returns, all_pc_clusters
 
-costs = km.cost_of_clustering(all_projected_clusters, all_projected_matrix, allocation_table)
-
-print(costs, sum(costs))
-
-if plot_clusters:
-    km.display_final_clusters(all_projected_clusters, all_projected_matrix, allocation_table)
-
-"""
-
-    PART II - Volatility fitting
-
-"""
-
-end = time.time()
-
-print end - start
+    return ret;

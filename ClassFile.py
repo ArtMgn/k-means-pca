@@ -87,8 +87,9 @@ class Results(object):
 
 class ProjectedSeries(object):
 
-    def __init__(self):
+    def __init__(self, name):
         self.components = []
+        self.name = name
 
     def add_components(self, component):
         self.components.append(component)
