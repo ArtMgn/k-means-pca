@@ -42,10 +42,50 @@ def get_returns(sht_idx, normalize, observations_nbr):
                                                           all_maturities[row_idx-1]
 
     # R = scatter_returns.T
-    if normalize == True:
+    if normalize:
         R = pp.normalize(scatter_returns.T, norm='l2', axis=0, copy=True)
     else:
         R = scatter_returns.T
 
 
     return R, sheet_name;
+
+
+def get_forward_curve(commo, maturity):
+
+    file_path=r'P:\Projects\Master Thesis'
+
+    Book = open_workbook(os.path.join(file_path,"XACO.xlsm"), on_demand=True)
+
+    sheet_name = Book.sheet_by_index(0).name
+    sheet = Book.sheet_by_name(sheet_name)
+
+    forward_curve = []
+
+    cell_obj_name = sheet.cell(maturity+1, commo*2)
+    cell_obj_price = sheet.cell(maturity+1, commo*2 + 1)
+    forward_curve.append((cell_obj_name.value, cell_obj_price.value))
+
+    return forward_curve, sheet.cell(1, commo*2 + 1).value;
+
+
+def get_strikes(commo):
+
+    file_path=r'P:\Projects\Master Thesis'
+
+    Book = open_workbook(os.path.join(file_path,"XACO.xlsm"), on_demand=True)
+
+    sheet_name = Book.sheet_by_index(0).name
+    sheet = Book.sheet_by_name(sheet_name)
+
+    strikes = []
+
+    val = ""
+    i = 0
+    while val != "-":
+        cell_obj_name = sheet.cell(20+i, commo*2 + 1)
+        i += 1
+        val = cell_obj_name.value
+        strikes.append(val)
+
+    return strikes;

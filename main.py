@@ -1,10 +1,10 @@
 import kmeans_main as kmean
 import options_lib as opt
 
-# distance = "euclidean"
+distance = "euclidean"
 # distance = "correlation-pca"
 # distance = "correlation"
-distance = "dwt"
+# distance = "dwt"
 
 # target = "series"
 target = "components"
@@ -20,7 +20,7 @@ normalize_return = True
 
 plot_pca = False
 plot_projected_mat = False
-plot_clusters = True
+plot_clusters = False
 plot_fitting = False
 
 file_path=r'P:\Projects\Master Thesis'

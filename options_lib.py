@@ -1,6 +1,13 @@
 from scipy import stats
+import data_getter as dg
 import math
+from matplotlib import gridspec
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+
 __author__ = 'MagnieAr'
 
 
@@ -11,32 +18,48 @@ def options_pricing(fitted_coefficients, all_returns):
     pc_number = 3
     component_vol = np.zeros(3)
 
-    spot = 100
-    strike = 100
+    spot = 2.062
+    strike = 2
+    rf = 1
 
     returns = np.array(all_returns)
 
     for j in range(0, commodity_number):
-        cov = np.cov(all_returns[j].T)
-        for t in range(1, T):  # time-to-maturity
+        call_term_structure = []
+        forwards = []
+        strikes = dg.get_strikes(j)
+        lv = []
+        for t in range(0, T):  # time-to-maturity
+            tau = T-t
             for pc in range(0, pc_number):
-                component_vol[pc] = volatility_model(fitted_coefficients[j][pc], T-t)
-            print("commo {0} vol, Maturity {1}".format(j, t))
+                component_vol[pc] = volatility_model(fitted_coefficients[j][pc], tau)
+            print("commo {0} vol, Maturity {1}".format(j, tau))
             print(component_vol)
             all_components = component_vol[0] + component_vol[1] + component_vol[2]
-            modelled_implied_vol = np.sqrt(all_components)  # utiliser le cours de vol
+            modelled_local_vol = np.sqrt(all_components)
+            print modelled_local_vol
+            lv.append(modelled_local_vol)
 
+            fwd, name = dg.get_forward_curve(j, tau-1)
+            forwards.append(float(fwd[0][1]))
+            """
+            cov = np.cov(all_returns[j].T)
             ret = returns[j].T[t]
             ret_squared = [i**2 for i in ret]
             sum_ret_squared = np.sum(ret_squared)
-            historical_vol = np.std(ret)  # TODO : annualized
+            historical_vol = np.std(ret)
             realized_variance = np.sqrt(12 * sum_ret_squared)
-
             print modelled_implied_vol, historical_vol, realized_variance, np.sqrt(cov[t][t])
+            """
 
-            c = black(1, spot, strike, 0, T-1, T, modelled_implied_vol, 0.10, 0.10)
-            print c
-            print("")
+            call_strikes = []
+            for k in strikes:
+                if k != "-":
+                    c = black(1, fwd[0][1], k, 0, tau, T, modelled_local_vol, 0.1, 0.10)
+                    call_strikes.append(c)
+                    # print c #, call.impliedVolatility
+            call_term_structure.append(call_strikes)
+        plot_price_surface(call_term_structure, strikes, name, lv, forwards)
 
     return;
 
@@ -52,16 +75,17 @@ def black_scholes(call_put, spot, strike, t, vol, rf, div):
     return option_price;
 
 
-def black(call_put, spot, strike, t, option_maturity, future_maturity, vol, rf, convenience_yield):
+def black(call_put, forward, strike, t, option_maturity, future_maturity, local_vol, rf, convenience_yield):
+    # print(call_put, forward, strike, t, option_maturity, future_maturity, local_vol, rf, convenience_yield)
 
-    future_price = spot * math.exp((rf - convenience_yield) * (future_maturity - t))
-    zero_coupon = math.exp(-rf * (option_maturity - t))
+    #future_price = spot * math.exp((rf - convenience_yield) * (future_maturity - t))
+    zero_coupon = math.exp(-rf * (future_maturity - t))
 
-    d1 = (math.log(future_price/strike)+(0.5 * math.pow(vol, 2)))/vol
-    d2 = d1 - vol
+    d1 = (math.log(forward/strike)+(0.5 * math.pow(local_vol, 2)))/local_vol
+    d2 = d1 - local_vol
 
     option_price = call_put * zero_coupon * \
-        (future_price * stats.norm.cdf(call_put * d1) - \
+        (forward * stats.norm.cdf(call_put * d1) - \
          strike * stats.norm.cdf(call_put * d2))
 
     return option_price;
@@ -81,13 +105,52 @@ def volatility_model(fitted_coefficients, future_maturity):
     return v;
 
 
-def simulation():
+def plot_price_surface(call_term_structure, strikes, name, lv, forwards):
 
-    # generate several strikes
+    ts = np.asarray(call_term_structure)
+    k = np.asarray(strikes[:len(strikes)-1])
+    fw = np.asarray(forwards)
+    vol = np.asarray(lv)
+    fig = plt.figure()
 
-    return
+    fig.suptitle('Local vol model {0}'.format(name))
+    gs = gridspec.GridSpec(3, 1, height_ratios=[3, 1, 1])
 
+    # plot call prices
 
-def hitorical_vol():
+    ax = fig.add_subplot(gs[0], projection='3d')
+    X = [i for i in range(0, 10)]
+    Y = [float(j) for j in k]
+    X, Y = np.meshgrid(X, Y)
+    Z = ts.T
+
+    ax.set_xlabel('Time-to-maturity')
+    ax.set_ylabel('Strikes')
+    ax.set_zlabel('Call prices')
+
+    surf = ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap=cm.coolwarm,
+                           linewidth=0, antialiased=False)
+
+    ax.zaxis.set_major_locator(LinearLocator(10))
+    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    # plot forward curve
+
+    ax = fig.add_subplot(gs[1])
+    ax.grid(True)
+    ax.set_xlabel('Time-to-maturity')
+    ax.set_ylabel('Forward prices')
+    l = ax.plot(X[0], fw)
+
+    # plot local vols
+    ax = fig.add_subplot(gs[2])
+    ax.grid(True)
+    ax.set_ylabel('Local Vols')
+    ax.set_xlabel('Time-to-maturity')
+    l = ax.plot(X[0], vol)
+
+    plt.show()
 
     return;
