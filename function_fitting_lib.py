@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
+import pylab
 from pca_lib import plot_pc
 
 
@@ -46,6 +47,9 @@ def function_fitting(fitting, function_type, eig_vectors, eig_values, sht_idx, s
         plt.ylabel('Eigen Vectors - Loading factors')
         plt.legend()
         plt.title('Volatility shape fitting - ' + sheet_name)
+        mng = plt.get_current_fig_manager()
+        mng.frame.Maximize(True)
+        pylab.savefig('Volatility shape fitting - ' + sheet_name + ".jpeg", bbox_inches='tight')
         plt.show()
 
     # Return coefficients

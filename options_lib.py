@@ -7,6 +7,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+import pylab
 
 __author__ = 'MagnieAr'
 
@@ -17,12 +18,6 @@ def options_pricing(fitted_coefficients, all_returns, plot_surfaces):
     commodity_number = 14
     pc_number = 3
     component_vol = np.zeros(3)
-
-    spot = 2.062
-    strike = 2
-    rf = 1
-
-    returns = np.array(all_returns)
 
     for j in range(0, commodity_number):
         call_term_structure = []
@@ -42,15 +37,6 @@ def options_pricing(fitted_coefficients, all_returns, plot_surfaces):
 
             fwd, name = dg.get_forward_curve(j, tau-1)
             forwards.append(float(fwd[0][1]))
-            """
-            cov = np.cov(all_returns[j].T)
-            ret = returns[j].T[t]
-            ret_squared = [i**2 for i in ret]
-            sum_ret_squared = np.sum(ret_squared)
-            historical_vol = np.std(ret)
-            realized_variance = np.sqrt(12 * sum_ret_squared)
-            print modelled_implied_vol, historical_vol, realized_variance, np.sqrt(cov[t][t])
-            """
 
             call_strikes = []
             for k in strikes:
@@ -153,9 +139,10 @@ def plot_price_surface(call_term_structure, strikes, name, lv, forwards):
     ax.set_xlabel('Time-to-maturity')
     l = ax.plot(X[0], vol)
 
-    plt.show()
-
     mng = plt.get_current_fig_manager()
     mng.frame.Maximize(True)
+    pylab.savefig("Call prices surface " + name + ".jpeg", bbox_inches='tight')
+
+    plt.show()
 
     return;

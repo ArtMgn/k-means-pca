@@ -21,8 +21,8 @@ normalize_return = True
 plot_pca = False
 plot_projected_mat = False
 plot_clusters = False
-plot_fitting = False
-plot_surfaces = False
+plot_fitting = True
+plot_surfaces = True
 
 file_path=r'P:\Projects\Master Thesis'
 workbook_name = "XHRC-datareduced.xlsm"
