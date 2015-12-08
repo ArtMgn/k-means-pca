@@ -22,6 +22,7 @@ plot_pca = False
 plot_projected_mat = False
 plot_clusters = False
 plot_fitting = False
+plot_surfaces = False
 
 file_path=r'P:\Projects\Master Thesis'
 workbook_name = "XHRC-datareduced.xlsm"
@@ -38,4 +39,4 @@ print(allocation_table)
 print("")
 print(clustering_cost)
 
-opt.options_pricing(fitted_coefficients, all_returns)
+opt.options_pricing(fitted_coefficients, all_returns, plot_surfaces)

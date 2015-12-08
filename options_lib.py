@@ -11,7 +11,7 @@ import numpy as np
 __author__ = 'MagnieAr'
 
 
-def options_pricing(fitted_coefficients, all_returns):
+def options_pricing(fitted_coefficients, all_returns, plot_surfaces):
 
     T = 10
     commodity_number = 14
@@ -37,7 +37,7 @@ def options_pricing(fitted_coefficients, all_returns):
             print(component_vol)
             all_components = component_vol[0] + component_vol[1] + component_vol[2]
             modelled_local_vol = np.sqrt(all_components)
-            print modelled_local_vol
+            # print modelled_local_vol
             lv.append(modelled_local_vol)
 
             fwd, name = dg.get_forward_curve(j, tau-1)
@@ -59,7 +59,9 @@ def options_pricing(fitted_coefficients, all_returns):
                     call_strikes.append(c)
                     # print c #, call.impliedVolatility
             call_term_structure.append(call_strikes)
-        plot_price_surface(call_term_structure, strikes, name, lv, forwards)
+        print(lv)
+        if plot_surfaces:
+            plot_price_surface(call_term_structure, strikes, name, lv, forwards)
 
     return;
 
@@ -109,7 +111,7 @@ def plot_price_surface(call_term_structure, strikes, name, lv, forwards):
 
     ts = np.asarray(call_term_structure)
     k = np.asarray(strikes[:len(strikes)-1])
-    fw = np.asarray(forwards)
+    fw = np.asarray(forwards[::-1])
     vol = np.asarray(lv)
     fig = plt.figure()
 
@@ -152,5 +154,8 @@ def plot_price_surface(call_term_structure, strikes, name, lv, forwards):
     l = ax.plot(X[0], vol)
 
     plt.show()
+
+    mng = plt.get_current_fig_manager()
+    mng.frame.Maximize(True)
 
     return;

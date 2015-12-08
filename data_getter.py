@@ -66,7 +66,7 @@ def get_forward_curve(commo, maturity):
     cell_obj_price = sheet.cell(maturity+1, commo*2 + 1)
     forward_curve.append((cell_obj_name.value, cell_obj_price.value))
 
-    return forward_curve, sheet.cell(1, commo*2 + 1).value;
+    return forward_curve, sheet.cell(0, commo*2).value;
 
 
 def get_strikes(commo):
